@@ -99,7 +99,7 @@ class SignInTabs(ctk.CTkTabview):
         if not(username and pass1 and pass2):
             self.output(
                 "All fields must be filled",
-                "red"
+                negRetVal
             )
             return negRetVal
 
@@ -128,7 +128,7 @@ class SignInTabs(ctk.CTkTabview):
 
         if all(userValidation) and all(passValidation) and validPass2:
             self.output(
-                    "Credentials valid",
+                    "Creating Account...",
                     (
                         True,
                         username,
@@ -218,13 +218,19 @@ class SignIn(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.title = ctk.CTkLabel(self, text="3Dev", font=("Source Code Pro", 60))
+        self.title = ctk.CTkLabel(
+            self,
+            text="3Dev",
+            font=(
+                "Source Code Pro",
+                60
+            )
+        )
         self.title.pack()
 
         self.tabs = SignInTabs(
             master=self,
-            corner_radius=10,
         )
-        self.tabs.pack(fill="y")
+        self.tabs.pack()
 
-        self.grid(row=1, column=1)
+        self.place(relx=0.5, rely=0.5, anchor="center")
