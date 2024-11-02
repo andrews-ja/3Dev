@@ -7,28 +7,36 @@ class SignInTabs(ctk.CTkTabview):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
+        self.credentials = (None, None)
+
         self.add("Sign Up")
 
         self.newUserEntry = self.createEntry(
             True,
-            "user")
+            "user"
+        )
         self.newUserEntry.pack(pady=10)
 
         self.newPassEntry = self.createEntry(
             True,
-            "password")
+            "password"
+        )
         self.newPassEntry.pack(pady=10)
 
         self.confPassEntry = self.createEntry(
             True,
-            "pass2")
+            "passwordConf"
+        )
         self.confPassEntry.pack(pady=10)
 
         self.signUpButton = ctk.CTkButton(
             self.tab("Sign Up"),
             text="Sign Up",
             command=self.signupSubmit,
-            font=("Source Code Pro", 13),
+            font=(
+                "Source Code Pro",
+                13
+            ),
         )
         self.signUpButton.pack(pady=10)
 
@@ -36,26 +44,42 @@ class SignInTabs(ctk.CTkTabview):
 
         self.userEntry = self.createEntry(
             False,
-            "user")
+            "user"
+            )
         self.userEntry.pack(pady=10)
 
         self.passEntry = self.createEntry(
             False,
-            "password")
+            "password"
+        )
         self.passEntry.pack(pady=10)
 
         self.loginButton = ctk.CTkButton(
             self.tab("Login"),
             text="Login",
-            command=self.loginSubmit,
-            font=("Source Code Pro", 13),
+            command=lambda: self.output(
+                "Validating Credentials...",
+                (
+                    True,
+                    self.userEntry.get(),
+                    self.passEntry.get(),
+                    True
+                    )
+                ),
+            font=(
+                "Source Code Pro",
+                13
+            ),
         )
         self.loginButton.pack(pady=10)
 
         self.loginMessage = ctk.CTkLabel(
             self.tab("Login"),
             text="",
-            font=("Source Code Pro", 10),
+            font=(
+                "Source Code Pro",
+                10
+            ),
         )
         self.loginMessage.pack()
 
@@ -68,11 +92,12 @@ class SignInTabs(ctk.CTkTabview):
         negRetVal = (
             False,
             "",
-            ""
+            "",
+            False
         )
 
         if not(username and pass1 and pass2):
-            self.outputMsg(
+            self.output(
                 "All fields must be filled",
                 "red"
             )
@@ -84,14 +109,15 @@ class SignInTabs(ctk.CTkTabview):
 
         if len(pass1) in range(8, 51):
             validPassLen = True
-            for i in range(len(pass1)):
-                if pass1[i : i + 3].isnumeric():
-                    validPassDigits = not({int(pass1[j + 1]) - int(pass1[j]) for j in range(i, i+2)} == {
-                        1,
-                        -1
-                    })
-                else:
-                    validPassDigits = True
+
+            noDigits = True
+            for i in range(len(pass1)-3):
+                if pass1[i : i + 4].isnumeric():
+                    noDigits = False
+                    validPassDigits = not(
+                        {int(pass1[j + 1]) - int(pass1[j]) for j in range(i, i+3)} == {1}
+                    )
+            if noDigits: validPassDigits = True
         else:
             validPassLen = False
             validPassDigits = False
@@ -101,72 +127,65 @@ class SignInTabs(ctk.CTkTabview):
         validPass2 = pass2 == pass1
 
         if all(userValidation) and all(passValidation) and validPass2:
-            self.newUserEntry.configure(border_color="white")
-            self.newPassEntry.configure(border_color="white")
-            self.confPassEntry.configure(border_color="white")
-            self.outputMsg(
+            self.output(
                     "Credentials valid",
-                    "green"
+                    (
+                        True,
+                        username,
+                        pass1,
+                        False
+                    )
                 )
-            return True, username, pass1
 
         if not all(userValidation):
             self.newUserEntry.configure(border_color="red")
             if not userValidation[0]:
-                self.outputMsg(
+                self.output(
                 "Username must be between 2 and 50 characters",
-                "red"
+                negRetVal
             )
             else:
-                self.outputMsg(
+                self.output(
                     "Username must not contain any special characters",
-                    "red"
+                    negRetVal
                 )
-            return negRetVal
         else:
             self.newUserEntry.configure(border_color="white")
 
         if not all(passValidation):
             self.newPassEntry.configure(border_color="red")
             if not passValidation[0]:
-                self.outputMsg(
+                self.output(
                     "Password must be between 8 and 50 characters",
-                    "red"
+                    negRetVal
                 )
             elif not passValidation[1]:
-                self.outputMsg(
+                self.output(
                 "Password must not contain more than 3 consecutive numbers",
-                "red"
+                negRetVal
             )
-
             elif not passValidation[2]:
-                self.outputMsg(
+                self.output(
                     "Password must contain at least 2 special characters",
-                    "red"
+                    negRetVal
                 )
-            return negRetVal
         else:
             self.newPassEntry.configure(border_color="white")
 
         if not validPass2:
             self.confPassEntry.configure(border_color="red")
-            self.outputMsg(
+            self.output(
                 "Passwords do not match",
-                "red"
+                negRetVal
             )
-            return negRetVal
         else:
             self.confPassEntry.configure(border_color="white")
-
-    def loginSubmit(self) -> bool:
-        username = self.userEntry.get()
-        password = self.passEntry.get()
 
     def createEntry(self, tab1: bool, field: str):
         fieldDict = {
             "user": ("Enter Username", ""),
             "password": ("Enter Password", "\u2022"),
-            "pass2": ("Confirm Password", "\u2022"),
+            "passwordConf": ("Confirm Password", "\u2022"),
         }
 
         return ctk.CTkEntry(
@@ -180,15 +199,19 @@ class SignInTabs(ctk.CTkTabview):
             show=fieldDict.get(field, "")[1],
         )
     
-    def outputMsg(self, msg: str, colour: str):
+    def output(self, msg: str, retVal: tuple[bool, str, str, bool]) -> tuple[str, str]:
         signUpMessage = ctk.CTkLabel(
-        self.tab("Sign Up"),
-        text=msg,
-        font=("Source Code Pro", 12.5),
-        text_color=colour
+            self.tab("Login" if retVal[-1] else "Sign Up"),
+            text=msg,
+            font=(
+                "Source Code Pro",
+                12.5
+            ),
+            text_color="green" if retVal[0] else "red"
         )
         signUpMessage.pack()
 
+        self.credentials = retVal[1:]
 
 class SignIn(ctk.CTkFrame):
 
