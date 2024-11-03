@@ -1,0 +1,13 @@
+[package]
+name = "three_dev"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "three_dev"
+crate-type = ["cdylib"]
+
+[dependencies]
+itertools = "0.13.0"
+pyo3 = "0.22.0"

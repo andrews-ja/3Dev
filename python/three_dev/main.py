@@ -6,10 +6,13 @@ from PIL import Image
 from interface.sign_in import SignIn
 # from data_management.user_manager import UserManager
 
+# Constants
+APP_TITLE = "3Dev"
+
 class Application(ctk.CTk):
     def __init__(
         self,
-        title: str = "3Dev",
+        title: str = APP_TITLE,
         size: tuple = (
             950,
             950

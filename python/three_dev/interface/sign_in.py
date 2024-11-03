@@ -46,7 +46,7 @@ class SignInTabs(ctk.CTkTabview):
         self.confPassEntry.pack(pady=10)
 
         self.signUpButton = ctk.CTkButton(
-            self.tab(self.tab2),
+            self.tab(self.tab1),
             text=self.tab1,
             command=self.signupSubmit,
             font=(
