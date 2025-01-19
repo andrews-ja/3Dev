@@ -2,7 +2,7 @@
 
 
 # Local imports
-from data_manager import DataManager
+from three_dev.data_management.data_manager import DataManager
 
 class UserManager(DataManager):
     def __init__(self):

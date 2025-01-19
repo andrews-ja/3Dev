@@ -1,22 +1,22 @@
 {
   "CTk": {
     "fg_color": [
-      "#0a2c4a",
-      "#002240"
+      "#1e405e",
+      "#0a2c4a"
     ]
   },
   "CTkToplevel": {
     "fg_color": [
-      "#0a2c4a",
-      "#002240"
+      "#1e405e",
+      "#0a2c4a"
     ]
   },
   "CTkFrame": {
-    "corner_radius": 6,
-    "border_width": 2,
+    "corner_radius": 15,
+    "border_width": 0,
     "fg_color": [
-      "#0a2c4a",
-      "#002240"
+      "#1e405e",
+      "#0a2c4a"
     ],
     "top_fg_color": [
       "#1e405e",
@@ -28,7 +28,7 @@
     ]
   },
   "CTkButton": {
-    "corner_radius": 6,
+    "corner_radius": 8,
     "border_width": 0,
     "fg_color": [
       "#086a97",
@@ -64,8 +64,8 @@
     ]
   },
   "CTkEntry": {
-    "corner_radius": 6,
-    "border_width": 2,
+    "corner_radius": 8,
+    "border_width": 1,
     "fg_color": [
       "#284a68",
       "#284a68"
@@ -84,7 +84,7 @@
     ]
   },
   "CTkCheckBox": {
-    "corner_radius": 6,
+    "corner_radius": 8,
     "border_width": 3,
     "fg_color": [
       "#748498",
@@ -204,7 +204,7 @@
     ]
   },
   "CTkOptionMenu": {
-    "corner_radius": 6,
+    "corner_radius": 8,
     "fg_color": [
       "#325472",
       "#325472"
@@ -227,7 +227,7 @@
     ]
   },
   "CTkComboBox": {
-    "corner_radius": 6,
+    "corner_radius": 8,
     "border_width": 2,
     "fg_color": [
       "#284a68",
@@ -268,7 +268,7 @@
     ]
   },
   "CTkSegmentedButton": {
-    "corner_radius": 6,
+    "corner_radius": 8,
     "border_width": 2,
     "fg_color": [
       "#7b99b5",
@@ -300,7 +300,7 @@
     ]
   },
   "CTkTextbox": {
-    "corner_radius": 6,
+    "corner_radius": 8,
     "border_width": 1,
     "fg_color": [
       "#284a68",
@@ -345,17 +345,17 @@
   },
   "CTkFont": {
     "macOS": {
-      "family": "Source Code Pro",
+      "family": "Robotto",
       "size": 13,
       "weight": "normal"
     },
     "Windows": {
-      "family": "Source Code Pro",
+      "family": "Robotto",
       "size": 13,
       "weight": "normal"
     },
     "Linux": {
-      "family": "Source Code Pro",
+      "family": "Robotto",
       "size": 13,
       "weight": "normal"
     }

@@ -1,3 +1,11 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "customtkinter",
+#   "pillow",
+# ]
+# ///
+
 # Library imports
 import customtkinter as ctk
 from PIL import Image
@@ -14,8 +22,8 @@ class Application(ctk.CTk):
         self,
         title: str = APP_TITLE,
         size: tuple = (
-            950,
-            950
+            1280,
+            720
         )
     ) -> None:
         """
@@ -39,8 +47,8 @@ class Application(ctk.CTk):
         )
 
         background = ctk.CTkImage(
-            light_image=Image.open("assets/images/light_sign_in.png"),
-            dark_image=Image.open("assets/images/dark_sign_in.png"),
+            light_image=Image.open("assets/images/login_background.jpg"),
+            dark_image=Image.open("assets/images/login_background.jpg"),
             size=size
         )
         self.background = ctk.CTkLabel(
@@ -59,6 +67,8 @@ class Application(ctk.CTk):
         self.signIn.place(
             relx=0.5,
             rely=0.5,
+            # width=320,
+            # height=360,
             anchor="center"
         )
 

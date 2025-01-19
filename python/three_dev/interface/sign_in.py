@@ -3,7 +3,7 @@ import customtkinter as ctk
 from PIL import Image
 
 
-class SignInTabs(ctk.CTkTabview):
+class SignIn(ctk.CTkFrame):
     def __init__(
         self,
         master,
@@ -11,91 +11,22 @@ class SignInTabs(ctk.CTkTabview):
         **kwargs
     ) -> None:
         """
-        * Constructs the "Sign Up" and "Login" tabs.
+        * Creates and displays sign in page components.
 
         Parameters:
-        master (CTkFrame): The parent frame.
-        signInData (dict): A dictionary to store user data.
+        @param master (CTk): The parent (main app) window.
+        signInData (dict): A dictionary to store user data to be passed to main.
         """
-
+        
         super().__init__(master, **kwargs)
-
         self.signInData = signInData
 
-        self.tab1 = "Sign Up"
-        self.tab2 = "Login"
-
-        self.add(self.tab1)
-
-        self.newUserEntry = self.createEntry(
-            self.tab1,
-            "user"
-        )
-        self.newUserEntry.pack(pady=10)
-
-        self.newPassEntry = self.createEntry(
-            self.tab1,
-            "password"
-        )
-        self.newPassEntry.pack(pady=10)
-
-        self.confPassEntry = self.createEntry(
-            self.tab1,
-            "passwordConf"
-        )
-        self.confPassEntry.pack(pady=10)
-
-        self.signUpButton = ctk.CTkButton(
-            self.tab(self.tab1),
-            text=self.tab1,
-            command=self.signupSubmit,
-            font=(
-                "Source Code Pro",
-                13
-            ),
-        )
-        self.signUpButton.pack(pady=10)
-
-        self.add(self.tab2)
-
-        self.userEntry = self.createEntry(
-            self.tab2,
-            "user"
-            )
-        self.userEntry.pack(pady=10)
-
-        self.passEntry = self.createEntry(
-            self.tab2,
-            "password"
-        )
-        self.passEntry.pack(pady=10)
-
-        self.loginButton = ctk.CTkButton(
-            self.tab(self.tab2),
-            text=self.tab2,
-            command=lambda: self.loginSubmit,
-            font=(
-                "Source Code Pro",
-                13
-            ),
-        )
-        self.loginButton.pack(pady=10)
-
-        self.loginMessage = ctk.CTkLabel(
-            self.tab(self.tab2),
-            text="",
-            font=(
-                "Source Code Pro",
-                10
-            ),
-        )
-        self.loginMessage.pack()
 
     def createEntry(
-        self,
-        tab: str,
-        field: str
-    ) -> ctk.CTkEntry:
+    self,
+    tab: str,
+    field: str
+) -> ctk.CTkEntry:
         """
         * Creates entry box to be displayed on the self.tab1 and self.tab2 tabs.
 
@@ -106,7 +37,7 @@ class SignInTabs(ctk.CTkTabview):
         Returns:
         ctk.CTkEntry: The created entry box.
         """
-        
+    
         fieldDict = {
             "user": ("Enter Username", ""),
             "password": ("Enter Password", "\u2022"),
@@ -123,7 +54,7 @@ class SignInTabs(ctk.CTkTabview):
             border_width=1,
             show=fieldDict.get(field, "")[1],
         )
-    
+
     def passData(
         self,
         username: str,
@@ -254,7 +185,7 @@ class SignInTabs(ctk.CTkTabview):
             )
         else:
             self.confPassEntry.configure(border_color="white")
-    
+
     def loginSubmit(
         self
     ) -> None:
@@ -309,38 +240,3 @@ class SignInTabs(ctk.CTkTabview):
             text_color="green" if success else "red"
         )
         signUpMessage.pack()
-
-class SignIn(ctk.CTkFrame):
-    def __init__(
-        self,
-        master,
-        signInData: dict,
-        **kwargs
-    ) -> None:
-        """
-        * Creates and displays sign in page components.
-
-        Parameters:
-        @param master (CTk): The parent (main app) window.
-        signInData (dict): A dictionary to store user data to be passed to main.
-        """
-        
-        super().__init__(master, **kwargs)
-
-        self.signInData = signInData
-
-        self.title = ctk.CTkLabel(
-            self,
-            text="3Dev",
-            font=(
-                "Source Code Pro",
-                60
-            )
-        )
-        self.title.pack()
-
-        self.tabs = SignInTabs(
-            self,
-            self.signInData
-        )
-        self.tabs.pack()

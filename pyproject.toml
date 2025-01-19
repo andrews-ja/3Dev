@@ -11,6 +11,10 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dynamic = ["version"]
+dependencies = [
+    "customtkinter>=5.2.2",
+    "pillow>=10.4.0",
+]
 [project.optional-dependencies]
 tests = [
     "pytest",
