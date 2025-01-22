@@ -1,11 +1,3 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#   "customtkinter",
-#   "pillow",
-# ]
-# ///
-
 # Library imports
 import customtkinter as ctk
 from PIL import Image

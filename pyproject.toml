@@ -1,24 +1,22 @@
-[build-system]
-requires = ["maturin>=1.7,<2.0"]
-build-backend = "maturin"
-
 [project]
-name = "three_dev"
-requires-python = ">=3.8"
-classifiers = [
-    "Programming Language :: Rust",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
+name = "three-dev"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "andrews-ja", email = "andrewsjag@gmail.com" }
 ]
-dynamic = ["version"]
-dependencies = [
-    "customtkinter>=5.2.2",
-    "pillow>=10.4.0",
-]
-[project.optional-dependencies]
-tests = [
-    "pytest",
-]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+three-dev = "three_dev:main"
+
 [tool.maturin]
-python-source = "python"
-features = ["pyo3/extension-module"]
+module-name = "three_dev._core"
+python-packages = ["three_dev"]
+python-source = "src"
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
