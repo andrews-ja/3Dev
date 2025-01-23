@@ -77,9 +77,13 @@ impl Ray {
     fn at(&self, t: f64) -> DVec3 {
         self.origin + t * self.direction
     }
-    fn colour(&self) -> DVec3 {
-        if hit_sphere(&DVec3::new(0., 0., -1.), 0.5, self) {
-            return DVec3::new(1., 0., 0.);
+    fn color(&self) -> DVec3 {
+        let t =
+            hit_sphere(&DVec3::new(0., 0., -1.), 0.5, self);
+        if t > 0.0 {
+            let N = (self.at(t) - DVec3::new(0., 0., -1.))
+                .normalize();
+            return 0.5 * (N + 1.0);
         };
 
         let unit_direction: DVec3 =
@@ -94,11 +98,16 @@ fn hit_sphere(
     center: &DVec3,
     radius: f64,
     ray: &Ray,
-) -> bool {
+) -> f64 {
     let oc: DVec3 = ray.origin - *center;
-    let a = ray.direction.dot(ray.direction);
-    let b = 2.0 * oc.dot(ray.direction);
-    let c = oc.dot(oc) - radius * radius;
-    let discriminant = b * b - 4. * a * c;
-    discriminant >= 0.
+    let a = ray.direction.length_squared();
+    let half_b = oc.dot(ray.direction);
+    let c = oc.length_squared() - radius * radius;
+    let discriminant = half_b * half_b - a * c;
+
+    if discriminant < 0. {
+        -1.0
+    } else {
+        (-half_b - discriminant.sqrt()) / a
+    }
 }
