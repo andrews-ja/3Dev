@@ -9,5 +9,6 @@ name = "three_dev"
 crate-type = ["cdylib"]
 
 [dependencies]
+glam = "0.29.2"
 itertools = "0.13.0"
 pyo3 = "0.22.0"
