@@ -3,7 +3,9 @@ import customtkinter as ctk
 from PIL import Image
 
 # Local imports
-from interface.sign_in import SignIn
+from python.interface.sign_up import SignUp
+from python.interface.login import Login
+from python.utilities.UI import *
 # from data_management.user_manager import UserManager
 
 # Constants
@@ -29,7 +31,7 @@ class Application(ctk.CTk):
         super().__init__()
 
         ctk.set_appearance_mode("System")
-        ctk.set_default_color_theme("assets/themes/cobalt.json")
+        # ctk.set_default_color_theme()
 
         self.title(title)
         self.geometry(f"{size[0]}x{size[1]}")
@@ -38,37 +40,30 @@ class Application(ctk.CTk):
             size[1]
         )
 
-        background = ctk.CTkImage(
-            light_image=Image.open("assets/images/login_background.jpg"),
-            dark_image=Image.open("assets/images/login_background.jpg"),
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        backgroundImg = ctk.CTkImage(
+            light_image=Image.open("assets/images/mountains.jpg"),
+            dark_image=Image.open("assets/images/forest.jpg"),
             size=size
         )
-        self.background = ctk.CTkLabel(
-            self,
-            image=background,
-            text=""
-        )
-        self.background.pack()
+        setBackground(self, backgroundImg)
 
-        self.signInData = {}
-
-        self.signIn = SignIn(
-            self,
-            self.signInData
-        )
-        self.signIn.place(
-            relx=0.5,
-            rely=0.5,
-            # width=320,
-            # height=360,
-            anchor="center"
-        )
+        self.signUp = SignUp(self)
+        self.login = Login(self)
+        
+        for frame in (self.signUp, self.login):
+            frame.grid(row=0, column=0, sticky="nsew")
+        
+        displayFrame(self, self.signUp, True)
 
 def main() -> None:
     """
     * Main function to initiate the application
     """
     app = Application()
+    app.resizable(False, False)
     app.mainloop()
 
 if __name__ == "__main__":
