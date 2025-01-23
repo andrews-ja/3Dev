@@ -12,9 +12,9 @@ const MAX_VAL: u8 = 255;
 const VIEWPRT_HEIGHT: f64 = 2.0;
 const VIEWPRT_WIDTH: f64 = VIEWPRT_HEIGHT
     * (IMG_WIDTH as f64 / IMG_HEIGHT as f64);
-const VIEWPORT_U: DVec3 =
+const VIEWPORT_X: DVec3 =
     DVec3::new(VIEWPRT_WIDTH, 0., 0.);
-const VIEWPORT_V: DVec3 =
+const VIEWPORT_Y: DVec3 =
     DVec3::new(0., -VIEWPRT_HEIGHT, 0.);
 
 const FOCAL_LEN: f64 = 1.0;
@@ -22,25 +22,25 @@ const CAMERA_CENTER: DVec3 = DVec3::ZERO;
 
 fn main() -> io::Result<()> {
     // Calculate the horizontal and vertical delta vectors from pixel to pixel.
-    let pixel_delta_u: DVec3 =
-        VIEWPORT_U / IMG_WIDTH as f64;
-    let pixel_delta_v: DVec3 =
-        VIEWPORT_V / IMG_HEIGHT as f64;
+    let pixel_delta_x: DVec3 =
+        VIEWPORT_X / IMG_WIDTH as f64;
+    let pixel_delta_y: DVec3 =
+        VIEWPORT_Y / IMG_HEIGHT as f64;
 
     // Calculate the location of the upper left pixel.
-    let viewport_upper_left: DVec3 = CAMERA_CENTER
+    let viewport_top_left: DVec3 = CAMERA_CENTER
         - DVec3::new(0., 0., FOCAL_LEN)
-        - VIEWPORT_U / 2.
-        - VIEWPORT_V / 2.;
-    let pixel00_loc: DVec3 = viewport_upper_left
-        + 0.5 * (pixel_delta_u + pixel_delta_v);
+        - VIEWPORT_X / 2.
+        - VIEWPORT_Y / 2.;
+    let viewoprt_origin: DVec3 = viewport_top_left
+        + 0.5 * (pixel_delta_x + pixel_delta_y);
 
     let pixels = (0..IMG_HEIGHT)
         .cartesian_product(0..IMG_WIDTH)
         .map(|(y, x)| {
-            let pixel_center = pixel00_loc
-                + (x as f64 * pixel_delta_u)
-                + (y as f64 * pixel_delta_v);
+            let pixel_center = viewoprt_origin
+                + (x as f64 * pixel_delta_x)
+                + (y as f64 * pixel_delta_y);
             let ray_direction =
                 pixel_center - CAMERA_CENTER;
             let ray = Ray {
@@ -74,16 +74,16 @@ struct Ray {
 }
 
 impl Ray {
-    fn at(&self, t: f64) -> DVec3 {
+    fn point_from_dist(&self, t: f64) -> DVec3 {
         self.origin + t * self.direction
     }
-    fn color(&self) -> DVec3 {
+    fn colour(&self) -> DVec3 {
         let t =
-            hit_sphere(&DVec3::new(0., 0., -1.), 0.5, self);
+            sphere_intersect(&DVec3::new(0., 0., -1.), 0.5, self);
         if t > 0.0 {
-            let N = (self.at(t) - DVec3::new(0., 0., -1.))
+            let n_vec = (self.point_from_dist(t) - DVec3::new(0., 0., -1.))
                 .normalize();
-            return 0.5 * (N + 1.0);
+            return 0.5 * (n_vec + 1.0);
         };
 
         let unit_direction: DVec3 =
@@ -94,7 +94,7 @@ impl Ray {
     }
 }
 
-fn hit_sphere(
+fn sphere_intersect(
     center: &DVec3,
     radius: f64,
     ray: &Ray,
