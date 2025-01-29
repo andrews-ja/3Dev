@@ -1,5 +1,6 @@
 use glam::DVec3;
 use itertools::Itertools;
+use rand::prelude::*;
 use std::{fs, io, ops::Range};
 
 fn main() -> io::Result<()> {
@@ -24,16 +25,17 @@ fn main() -> io::Result<()> {
 struct Camera {
     img_width: u32,
     img_height: u32,
-    max_val: u8,
+    max_value: u8,
     aspect_ratio: f64,
     center: DVec3,
-    pixel_delta_x: DVec3,
-    pixel_delta_y: DVec3,
-    pixel00_loc: DVec3,
+    pix_delta_x: DVec3,
+    pix_delta_y: DVec3,
+    pix00_loc: DVec3,
+    samples_per_pix: u32,
 }
 impl Camera {
     fn new(img_width: u32, aspect_ratio: f64) -> Self {
-        let max_val: u8 = 255;
+        let max_value: u8 = 255;
         let img_height: u32 =
             (img_width as f64 / aspect_ratio) as u32;
         let viewport_height: f64 = 2.0;
@@ -43,60 +45,91 @@ impl Camera {
         let center: DVec3 = DVec3::ZERO;
 
         // Calculate the vectors across the horizontal and down the vertical viewport edges.
-        let viewport_x: DVec3 =
+        let viewport_u: DVec3 =
             DVec3::new(viewport_width, 0., 0.);
-        let viewport_y: DVec3 =
+        let viewport_v: DVec3 =
             DVec3::new(0., -viewport_height, 0.);
 
-        // Calculate the horizontal and vertical delta vectors from pixel to pixel.
-        let pixel_delta_x: DVec3 =
-            viewport_x / img_width as f64;
-        let pixel_delta_y: DVec3 =
-            viewport_y / img_height as f64;
+        // Calculate the horizontal and vertical delta vectors from pix to pix.
+        let pix_delta_x: DVec3 =
+            viewport_u / img_width as f64;
+        let pix_delta_y: DVec3 =
+            viewport_v / img_height as f64;
 
-        // Calculate the location of the upper left pixel.
-        let viewport_xpper_left: DVec3 = center
+        // Calculate the location of the upper left pix.
+        let viewport_upper_left: DVec3 = center
             - DVec3::new(0., 0., focal_length)
-            - viewport_x / 2.
-            - viewport_y / 2.;
-        let pixel00_loc: DVec3 = viewport_xpper_left
-            + 0.5 * (pixel_delta_x + pixel_delta_y);
+            - viewport_u / 2.
+            - viewport_v / 2.;
+        let pix00_loc: DVec3 = viewport_upper_left
+            + 0.5 * (pix_delta_x + pix_delta_y);
 
         Self {
             img_width,
             img_height,
-            max_val,
+            max_value,
             aspect_ratio,
             center,
-            pixel_delta_x,
-            pixel_delta_y,
-            pixel00_loc,
+            pix_delta_x,
+            pix_delta_y,
+            pix00_loc,
+            samples_per_pix: 100,
         }
     }
+    
+    fn sample_square(&self) -> DVec3 {
+        let mut rng = rand::rng();
+        // Returns a random point in the square surrounding a pix at the origin.
+        let px = -0.5 + rng.random::<f64>();
+        let py = -0.5 + rng.random::<f64>();
+        (px * self.pix_delta_x)
+            + (py * self.pix_delta_y)
+    }
+
+    fn get_ray(&self, i: i32, j: i32) -> Ray {
+        // Get a randomly sampled camera ray for the pix at location i,j.
+
+        let pix_center = self.pix00_loc
+            + (i as f64 * self.pix_delta_x)
+            + (j as f64 * self.pix_delta_y);
+        let pix_sample =
+            pix_center + self.sample_square();
+
+        let ray_origin = self.center;
+        let ray_direction = pix_sample - ray_origin;
+
+        Ray {
+            origin: self.center,
+            direction: ray_direction,
+        }
+    }
+
     fn render_to_disk<T>(&self, scene: T) -> io::Result<()>
     where
         T: Hittable,
     {
-        let pixels = (0..self.img_height)
+        let pixs = (0..self.img_height)
             .cartesian_product(0..self.img_width)
             .map(|(y, x)| {
-                let pixel_center = self.pixel00_loc
-                    + (x as f64 * self.pixel_delta_x)
-                    + (y as f64 * self.pixel_delta_y);
-                let ray_direction =
-                    pixel_center - self.center;
-                let ray = Ray {
-                    origin: self.center,
-                    direction: ray_direction,
-                };
+                let scale_factor =
+                    (self.samples_per_pix as f64).recip();
 
-                let pixel_colour = ray.colour(&scene) * 255.0;
+                let pix_colour = (0..self
+                    .samples_per_pix)
+                    .into_iter()
+                    .map(|_| {
+                        self.get_ray(x as i32, y as i32)
+                            .colour(&scene)
+                            * 255.0
+                            * scale_factor
+                    })
+                    .sum::<DVec3>();
 
                 format!(
                     "{} {} {}",
-                    pixel_colour.x,
-                    pixel_colour.y,
-                    pixel_colour.z
+                    pix_colour.x,
+                    pix_colour.y,
+                    pix_colour.z
                 )
             })
             .join("\n");
@@ -106,10 +139,10 @@ impl Camera {
                 "P3
                 {} {}
                 {}
-                {pixels}",
+                {pixs}",
                 self.img_width,
                 self.img_height,
-                self.max_val
+                self.max_value
             ),
         )
     }
@@ -159,14 +192,14 @@ struct HitRecord {
 impl HitRecord {
     fn with_face_normal(
         point: DVec3,
-        out_normal: DVec3,
+        outward_normal: DVec3,
         t: f64,
         ray: &Ray,
     ) -> Self {
         let (front_face, normal) =
             HitRecord::calc_face_normal(
                 ray,
-                &out_normal,
+                &outward_normal,
             );
         HitRecord {
             point,
@@ -177,26 +210,27 @@ impl HitRecord {
     }
     fn calc_face_normal(
         ray: &Ray,
-        out_normal: &DVec3,
+        outward_normal: &DVec3,
     ) -> (bool, DVec3) {
         let front_face =
-            ray.direction.dot(*out_normal) < 0.;
+            ray.direction.dot(*outward_normal) < 0.;
         let normal = if front_face {
-            *out_normal
+            *outward_normal
         } else {
-            -*out_normal
+            -*outward_normal
         };
         (front_face, normal)
     }
+
     fn set_face_normal(
         &mut self,
         ray: &Ray,
-        out_normal: &DVec3,
+        outward_normal: &DVec3,
     ) {
         let (front_face, normal) =
             HitRecord::calc_face_normal(
                 ray,
-                out_normal,
+                outward_normal,
             );
 
         self.front_face = front_face;
@@ -238,12 +272,12 @@ impl Hittable for Sphere {
 
         let t = root;
         let point = ray.at(t);
-        let out_normal =
+        let outward_normal =
             (point - self.center) / self.radius;
 
         let rec = HitRecord::with_face_normal(
             point,
-            out_normal,
+            outward_normal,
             t,
             ray,
         );
