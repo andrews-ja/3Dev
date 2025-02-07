@@ -2,7 +2,7 @@
 import customtkinter as ctk
 from PIL import Image
 
-def displayFrame(self, master: any, frame: ctk.Frame, clear: bool):
+def displayFrame(self, master: any, frame: ctk.CTkFrame, clear: bool):
     """
     * Displays a given frame in the application window
     """
@@ -61,11 +61,11 @@ def outputMsg(
         ),
         text_color="green" if success else "red"
     )
-    signUpMessage.pack()
+    signUpMessage.grid(row=0, column=0, sticky="nsew")
 
 def setBackground(
     master: any,
-    img: ctk.Image
+    img: ctk.CTkImage
 ) -> None:
     """
     * Sets the background of the main application window.
@@ -76,4 +76,4 @@ def setBackground(
         image=img,
         text=""
     )
-    master.background.pack()
+    master.background.grid(row=0, column=0, sticky="nsew")
