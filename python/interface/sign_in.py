@@ -1,17 +1,20 @@
 # Library imports
 import customtkinter as ctk
 from PIL import Image
+import time
 
 # Local imports
+from data_management.user_manager import UserManager
 from utilities.UI import *
 
 class UserMenu(ctk.CTkFrame):
     def __init__(
         self,
-        master,
+        master: ctk.CTk, # Expecting Application instance as master
         **kwargs
     ) -> None:
         super().__init__(master, fg_color=DARK_BLUE, **kwargs)
+        self.app = master # Store Application instance
 
         self.columnconfigure((0, 1), weight=1)
         self.rowconfigure((0, 1, 2), weight=1)
@@ -19,7 +22,7 @@ class UserMenu(ctk.CTkFrame):
         self.signup_button = ctk.CTkButton(
             self,
             text="Sign Up",
-            command=lambda: self.show_menu(self.signUp),
+            command=lambda: self._show_menu(self.signUp),
             fg_color=DARK_BLUE,  # Dark blue background
             hover_color=HOVER_COLOUR1,  # Slightly lighter on hover
             border_width=0,
@@ -32,7 +35,7 @@ class UserMenu(ctk.CTkFrame):
         self.login_button = ctk.CTkButton(
             self,
             text="Login",
-            command=lambda: self.show_menu(self.login),
+            command=lambda: self._show_menu(self.login),
             fg_color=LIGHTER_BLUE,  # Dark blue background
             hover_color=HOVER_COLOUR1,  # Slightly lighter on hover
             border_width=0,
@@ -60,9 +63,9 @@ class UserMenu(ctk.CTkFrame):
         self.signUp.grid(row=2, column=0, columnspan=2, pady=30, sticky="nesw")
         self.login.grid(row=2, column=0, columnspan=2, pady=30, sticky="nesw")
 
-        self.show_menu(self.login)  # Show login page by default
+        self._show_menu(self.login)  # Show login page by default
 
-    def show_menu(self, frame):
+    def _show_menu(self, frame):
         if frame == self.signUp:
             self.signup_button.configure(text_color="white", fg_color=LIGHTER_BLUE)
             self.login_button.configure(text_color=UNSELECTED_COLOR, fg_color=DARKER_BLUE)
@@ -74,7 +77,7 @@ class UserMenu(ctk.CTkFrame):
 class SignUp(ctk.CTkFrame):
     def __init__(
         self,
-        master,
+        master, # Expecting UserMenu instance as master
         **kwargs
     ) -> None:
         """
@@ -153,7 +156,12 @@ class SignUp(ctk.CTkFrame):
         """
         * Validates credentials to ensure they fit the required format - displays error messages if invalid, otherwise, passes credentials through to main to be handled by the data manager.
         """
-        
+        user_manager = UserManager()
+
+        self.newUserEntry.configure(border_width=0)
+        self.newPassEntry.configure(border_width=0)
+        self.confPassEntry.configure(border_width=0)
+
         username = self.newUserEntry.get()
         pass1 = self.newPassEntry.get()
         pass2 = self.confPassEntry.get()
@@ -165,9 +173,13 @@ class SignUp(ctk.CTkFrame):
                 False
             )
 
+            self.newUserEntry.configure(border_color="red", border_width=1)
+            self.newPassEntry.configure(border_color="red", border_width=1)
+            self.confPassEntry.configure(border_color="red", border_width=1)
+
         specChCount = lambda text: len([ch for ch in text if not ch.isalnum() and not ch.isspace()])
 
-        userValidation = [len(username) in range(2, 51), not specChCount(username)]
+        userValidation = [len(username) in range(2, 51), not specChCount(username), not(user_manager.get_user(username))]
 
         if len(pass1) in range(8, 51):
             validPassLen = True
@@ -190,12 +202,23 @@ class SignUp(ctk.CTkFrame):
         validPass2 = pass2 == pass1
 
         if all(userValidation) and all(passValidation) and validPass2:
+            
+            hashed_password = pass1 # TODO: Insecure - Replace with proper hashing
+            user_manager.create_user(username, hashed_password)
+            
             outputMsg(
-                    self,
-                    "Creating Account...",
-                    True
-                )
+                self,
+                "Account Created!",
+                True
+            )
 
+            self.newUserEntry.configure(border_color="green", border_width=1)
+            self.newPassEntry.configure(border_color="green", border_width=1)
+            self.confPassEntry.configure(border_color="green", border_width=1)
+
+            time.sleep(0.5)
+            self.master.master.display_dashboard(username)
+        
         if not all(userValidation):
             self.newUserEntry.configure(border_color="red", border_width=1)
 
@@ -205,10 +228,16 @@ class SignUp(ctk.CTkFrame):
                 "Username must be between 2 and 50 characters",
                 False
             )
-            else:
+            elif not userValidation[1]:
                 outputMsg(
                     self,
                     "Username must not contain any special characters",
+                    False
+                )
+            elif not userValidation[2]:
+                outputMsg(
+                    self,
+                    "Username already taken",
                     False
                 )
         else:
@@ -219,7 +248,6 @@ class SignUp(ctk.CTkFrame):
 
             if not passValidation[0]:
                 outputMsg(
-                    self,
                     self,
                     "Password must be between 8 and 50 characters",
                     False
@@ -253,7 +281,7 @@ class SignUp(ctk.CTkFrame):
 class Login(ctk.CTkFrame):
     def __init__(
         self,
-        master,
+        master, # Expecting UserMenu instance as master
         **kwargs
     ) -> None:
         """
@@ -314,6 +342,9 @@ class Login(ctk.CTkFrame):
         * Outputs error message if a field is missing, otherwise, passes credentials through to main to be handled by data manager.
         """
 
+        self.userEntry.configure(border_width=0)
+        self.passEntry.configure(border_width=0)
+
         username = self.userEntry.get()
         password = self.passEntry.get()
 
@@ -323,13 +354,40 @@ class Login(ctk.CTkFrame):
                 "All fields must be filled",
                 False
             )
+
+            self.userEntry.configure(border_color="red", border_width=1)
+            self.passEntry.configure(border_color="red", border_width=1)
+            
+        user_manager = UserManager()
+        user = user_manager.get_user(username)
+
+        if user:
+            if user['password_hash'] == password: # TODO: Insecure - Replace with proper password hashing and verification
+                outputMsg(
+                    self,
+                    "Login Successful!",
+                    True
+                )
+
+                self.userEntry.configure(border_color="green", border_width=1)
+                self.passEntry.configure(border_color="green", border_width=1)
+
+                time.sleep(0.25)
+
+                self.master.master.display_dashboard(username)
+            else:
+                outputMsg(
+                    self,
+                    "Incorrect password",
+                    False
+                )
+                self.passEntry.configure(border_color="red", border_width=1)
         else:
             outputMsg(
                 self,
-                "Validating Credentials...",
-                True
+                "Username not found",
+                False
             )
-            # TODO: insert database check and display window call
+
+            self.userEntry.configure(border_color="red", border_width=1)
         
-        self.userEntry.configure(border_color="green", border_width=1)
-        self.passEntry.configure(border_color="green", border_width=1)

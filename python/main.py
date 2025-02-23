@@ -5,18 +5,15 @@ from PIL import Image
 # Local imports
 from interface.sign_in import *
 from utilities.UI import *
+from interface.dashboard import *
 # from data_management.user_manager import UserManager
-
-# Constants
-APP_TITLE = "3Dev"
 
 class Application(ctk.CTk):
     def __init__(
         self,
-        title: str = APP_TITLE,
-        size: tuple = (
-            500,
-            550
+        min_size: tuple = (
+            600,
+            600
         )
     ) -> None:
         """
@@ -32,34 +29,53 @@ class Application(ctk.CTk):
         ctk.set_appearance_mode("System")
         ctk.set_default_color_theme("dark-blue")
 
-        self.title(title)
+        self.title("3Dev")
         
-        self.geometry(f"{size[0]}x{size[1]}")
+        self.min_size = min_size
         self.minsize(
-            size[0],
-            size[1]
+            self.min_size[0],
+            self.min_size[1]
         )
+        
+        # Set dark theme
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("blue")
 
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
+        self.display_sign_in()
 
-        # Sign In Page
+    def _clear_window(self):
+        for frame in self.grid_slaves():
+            frame.grid_forget()
+
+    def display_sign_in(self):
+        self.geometry(f"{self.min_size[0]}x{self.min_size[1]}")
+
+        self._clear_window()
+
+        # Sign In frame
         self.user_menu = UserMenu(self)
+
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
         self.user_menu.grid(row=0, column=0, sticky="nesw")
+        
+    def display_dashboard(
+        self,
+        username: str
+    ) -> None:
+        self._clear_window()
 
-    def displayFrame(self, master: any, frame: ctk.CTkFrame, clear: bool):
-        """
-        * Displays a given frame in the application window
+        self.geometry("1920x1200")
 
-        Parameters:
-        master (any): The parent of the given frame.
-        frame (ctk.CTkFrame): The frame to be displayed.
-        clear (bool): A boolean indicating whether to clear the previous frames or not.
-        """
-        if clear:
-            for child in master.winfo_children():
-                child.grid_forget()
-        frame.tkraise()
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+
+        # Dashboard frames
+        self.top_menu = TopMenuFrame(self, username, fg_color=DARK_BLUE)
+
+        self.top_menu.grid(row=0, column=0, sticky="nesw")
+        self.main_content.grid(row=1, column=0, sticky="nsew")
 
 def main() -> None:
     """
