@@ -3,13 +3,57 @@ use itertools::Itertools;
 use rand::Rng;
 use std::{fs, io, ops::Range, sync::Arc};
 
+trait Texture: Send + Sync {
+    fn color(&self, u: f64, v: f64, p: DVec3) -> DVec3;
+}
+
+struct SolidColor {
+    color: DVec3,
+}
+
+impl Texture for SolidColor {
+    fn color(&self, _u: f64, _v: f64, _p: DVec3) -> DVec3 {
+        self.color
+    }
+}
+
+struct ImageTexture {
+    image: image::RgbImage,
+}
+
+impl ImageTexture {
+    fn new(path: &str) -> io::Result<Self> {
+        let img = image::open(path)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+            .to_rgb8();
+        Ok(Self { image: img })
+    }
+}
+
+impl Texture for ImageTexture {
+    fn color(&self, u: f64, v: f64, _p: DVec3) -> DVec3 {
+        let u = u.clamp(0.0, 1.0);
+        let v = 1.0 - v.clamp(0.0, 1.0); // Flip V
+
+        let x = (u * (self.image.width() - 1) as f64) as u32;
+        let y = (v * (self.image.height() - 1) as f64) as u32;
+
+        let pixel = self.image.get_pixel(x, y);
+        DVec3::new(
+            pixel[0] as f64 / 255.0,
+            pixel[1] as f64 / 255.0,
+            pixel[2] as f64 / 255.0,
+        )
+    }
+}
+
 // Materials ------------------------------------------------------------------
 trait Material {
     fn scatter(&self, ray_in: &Ray, rec: &HitRecord) -> Option<(DVec3, Ray)>;
 }
 
 struct Lambertian {
-    albedo: DVec3,
+    albedo: Arc<dyn Texture>,
 }
 
 impl Material for Lambertian {
@@ -18,7 +62,20 @@ impl Material for Lambertian {
         if scatter_dir.abs_diff_eq(DVec3::ZERO, 1e-8) {
             scatter_dir = rec.normal;
         }
-        Some((self.albedo, Ray::new(rec.point, scatter_dir)))
+        let attenuation = self.albedo.color(rec.u, rec.v, rec.point);
+        Some((attenuation, Ray::new(rec.point, scatter_dir)))
+    }
+}
+
+impl Lambertian {
+    fn new(color: DVec3) -> Self {
+        Self {
+            albedo: Arc::new(SolidColor { color })
+        }
+    }
+
+    fn from_texture(texture: Arc<dyn Texture>) -> Self {
+        Self { albedo: texture }
     }
 }
 
@@ -142,13 +199,15 @@ struct HitRecord {
     t: f64,
     front_face: bool,
     material: Arc<dyn Material>,
+    u: f64,
+    v: f64,
 }
 
 impl HitRecord {
-    fn new(ray: &Ray, point: DVec3, t: f64, outward_normal: DVec3, material: Arc<dyn Material>) -> Self {
+    fn new(ray: &Ray, point: DVec3, t: f64, outward_normal: DVec3, material: Arc<dyn Material>, u: f64, v: f64) -> Self {
         let front_face = ray.direction.dot(outward_normal) < 0.0;
         let normal = if front_face { outward_normal } else { -outward_normal };
-        Self { point, normal, t, front_face, material }
+        Self { point, normal, t, front_face, material, u, v }
     }
 }
 
@@ -170,26 +229,39 @@ impl Hittable for Sphere {
         let c = oc.length_squared() - self.radius.powi(2);
         let discriminant = half_b.powi(2) - a * c;
 
-        (discriminant > 0.0).then(|| {
-            let sqrtd = discriminant.sqrt();
-            let root = (-half_b - sqrtd) / a;
-            let root = if !interval.contains(&root) {
-                (-half_b + sqrtd) / a
-            } else {
-                root
-            };
+        if discriminant < 0.0 {
+            return None;
+        }
 
-            interval.contains(&root).then(|| {
-                let point = ray.at(root);
-                HitRecord::new(
-                    ray,
-                    point,
-                    root,
-                    (point - self.center) / self.radius,
-                    Arc::clone(&self.material),
-                )
-            })
-        }).flatten()
+        let sqrtd = discriminant.sqrt();
+        let mut root = (-half_b - sqrtd) / a;
+
+        if !interval.contains(&root) {
+            root = (-half_b + sqrtd) / a;
+            if !interval.contains(&root) {
+                return None;
+            }
+        }
+
+        let point = ray.at(root);
+        let outward_normal = (point - self.center) / self.radius;
+
+        // Calculate UV coordinates for texture mapping
+        let dir = outward_normal;
+        let phi = (-dir.z).atan2(dir.x) + std::f64::consts::PI;
+        let theta = (-dir.y).acos();
+        let u = phi / (2.0 * std::f64::consts::PI);
+        let v = theta / std::f64::consts::PI;
+
+        Some(HitRecord::new(
+            ray,
+            point,
+            root,
+            outward_normal,
+            Arc::clone(&self.material),
+            u,
+            v,
+        ))
     }
 }
 
@@ -251,13 +323,23 @@ impl Hittable for Quad {
             return None;
         }
 
+        let alpha = self.w.dot(planar_hitpt.cross(self.v_vec));
+        let beta = self.w.dot(self.u_vec.cross(planar_hitpt));
+
+        if alpha < 0.0 || alpha > 1.0 || beta < 0.0 || beta > 1.0 {
+            return None;
+        }
+
         Some(HitRecord::new(
             ray,
             intersection,
             t,
             self.normal,
             Arc::clone(&self.material),
+            alpha,
+            beta,
         ))
+
     }
 }
 
@@ -288,9 +370,9 @@ fn create_cuboid(
         Arc::clone(&material),
     ));
 
-    // Right face
+    // Right face - ERROR 1: Incorrect starting position (using half_width instead of -half_width)
     world.add(Quad::new(
-        center + DVec3::new(half_width, -half_height, half_depth),
+        center + DVec3::new(-half_width, -half_height, half_depth),
         DVec3::new(0.0, dimensions.y, 0.0),
         DVec3::new(0.0, 0.0, -dimensions.z),
         Arc::clone(&material),
@@ -304,11 +386,11 @@ fn create_cuboid(
         Arc::clone(&material),
     ));
 
-    // Top face
+    // Top face - ERROR 2: Swapped vector parameters (u and v vectors mixed up)
     world.add(Quad::new(
         center + DVec3::new(-half_width, half_height, -half_depth),
-        DVec3::new(dimensions.x, 0.0, 0.0),
         DVec3::new(0.0, 0.0, dimensions.z),
+        DVec3::new(dimensions.x, 0.0, 0.0),
         Arc::clone(&material),
     ));
 
@@ -476,55 +558,125 @@ fn random_in_unit_disk<R: Rng>(rng: &mut R) -> DVec3 {
 fn main() -> io::Result<()> {
     let mut world = HittableList { objects: vec![] };
 
-    // Materials with carefully chosen colors
-    let ground_material = Arc::new(Lambertian { 
-        albedo: DVec3::new(0.5, 0.5, 0.5)  // Neutral gray for the ground
+    // --- Materials ---
+    // Ground Material (Lambertian Solid Color)
+    let ground_material = Arc::new(Lambertian::new(DVec3::new(0.5, 0.5, 0.5)));
+
+    // Lambertian (Solid Color)
+    let lambertian_red = Arc::new(Lambertian::new(DVec3::new(0.7, 0.1, 0.1)));
+
+    // Lambertian (Image Texture) - Requires earth.jpg or similar
+    let earth_texture = Arc::new(ImageTexture::new("earth.jpg")
+        .expect("Failed to load earth.jpg. Make sure the file exists.")); // Using expect for simplicity here
+    let earth_material = Arc::new(Lambertian::from_texture(earth_texture));
+
+    // Metal (Smooth)
+    let metal_smooth = Arc::new(Metal::new(DVec3::new(0.8, 0.8, 0.9), 0.0)); // Low fuzz
+
+    // Metal (Fuzzy)
+    let metal_fuzzy = Arc::new(Metal::new(DVec3::new(0.8, 0.6, 0.2), 0.6)); // High fuzz
+
+    // Dielectric (Glass)
+    let dielectric_glass = Arc::new(Dielectric {
+        albedo: DVec3::ONE, // White/clear, albedo tints the refracted/reflected light
+        refractive_index: 1.5,
     });
-    
-    let cuboid_material = Arc::new(Lambertian { 
-        albedo: DVec3::new(0.7, 0.3, 0.2)  // Warm reddish-brown for the cuboid
-    });
-    
-    let glass_material = Arc::new(Dielectric { 
-        albedo: DVec3::ONE,
-        refractive_index: 1.5  // Standard glass refractive index
+    let dielectric_glass_hollow = Arc::new(Dielectric {
+        albedo: DVec3::ONE, // White/clear, albedo tints the refracted/reflected light
+        refractive_index: -1.5,
     });
 
-    // Ground plane (large quad instead of a sphere for a cleaner look)
+
+
+    // --- Scene Objects ---
+
+    // Ground Plane (Large Sphere)
+    world.add(Sphere {
+        center: DVec3::new(0.0, -1000.0, 0.0), // Center it far below
+        radius: 1000.0,
+        material: ground_material,
+    });
+
+    // Central Sphere (Smooth Metal) - Will be in focus
+    world.add(Sphere {
+        center: DVec3::new(0.0, 1.0, 0.0),
+        radius: 1.0,
+        material: metal_smooth,
+    });
+
+
+    // Left Sphere (Dielectric/Glass)
+    world.add(Sphere {
+        center: DVec3::new(-4.0, 1.0, 0.0),
+        radius: 1.0,
+        material: dielectric_glass, // Use Arc::clone
+    });
+    // Inner sphere for hollow effect (Optional, demonstrates internal reflection better)
+    world.add(Sphere {
+        center: DVec3::new(-4.0, 1.0, 0.0),
+        radius: -0.9, // Negative radius flips normals for hollow effect
+        material: dielectric_glass_hollow,
+    });
+
+
+    // Right Sphere (Textured Lambertian)
+    world.add(Sphere {
+        center: DVec3::new(4.0, 1.0, 0.0),
+        radius: 1.0,
+        material: earth_material,
+    });
+
+    // Foreground Sphere (Fuzzy Metal) - Should appear slightly blurred due to DoF
+    world.add(Sphere {
+        center: DVec3::new(2.0, 0.5, 2.0),
+        radius: 0.5,
+        material: metal_fuzzy,
+    });
+
+    // Background Quad (Solid Lambertian) - Demonstrates Quad geometry
     world.add(Quad::new(
-        DVec3::new(-15.0, -1.0, -15.0),     // Origin point below the objects
-        DVec3::new(30.0, 0.0, 0.0),         // Width vector
-        DVec3::new(0.0, 0.0, 30.0),         // Depth vector
-        ground_material,
+        DVec3::new(-2.0, 0.01, -3.0), // Origin corner
+        DVec3::new(4.0, 0.0, 0.0),    // U vector (width)
+        DVec3::new(0.0, 4.0, 0.0),    // V vector (height)
+        lambertian_red,             // Material
     ));
 
-    // Create a cuboid slightly to the left
+
+    // Cuboid - Demonstrates create_cuboid (potentially with visual errors)
+    let cuboid_mat = Arc::new(Lambertian::new(DVec3::new(0.1, 0.7, 0.1))); // Green
     create_cuboid(
-        DVec3::new(-1.0, 0.0, 0.0),        // Center position
-        DVec3::new(1.2, 2.0, 1.2),         // Dimensions (width, height, depth)
-        cuboid_material,
+        DVec3::new(-1.5, 0.75, 2.5), // Center position
+        DVec3::new(1.5, 1.5, 1.5),   // Dimensions (width, height, depth)
+        cuboid_mat,
         &mut world,
     );
 
-    // Add glass sphere to the right
-    world.add(Sphere {
-        center: DVec3::new(1.0, 0.0, 0.0),
-        radius: 1.0,
-        material: glass_material,
-    });
 
-    // Camera positioned for an artistic view
+    // --- Camera ---
+    let aspect_ratio = 16.0 / 9.0;
+    let image_width = 1000; // Use a smaller width (e.g., 400) for faster testing
+    let samples_per_pixel = 100; // Lower (e.g., 10-50) for faster testing, higher (100-500+) for quality
+    let max_depth = 50;        // Max ray bounces
+
+    let look_from = DVec3::new(13.0, 2.0, 3.0); // Camera position
+    let look_at = DVec3::new(0.0, 0.0, 0.0);    // Point camera looks at
+    let up_vector = DVec3::new(0.0, 1.0, 0.0);  // Camera orientation
+
+    let focus_dist = 10.0; // Distance to the plane in perfect focus (distance from look_from to look_at)
+    let aperture = 0.1;   // Controls the size of the lens opening (larger aperture = more blur)
+
     let camera = Camera::new(
-        1200,                               // image_width
-        16.0 / 9.0,                        // aspect_ratio
-        100,
-        50,
-        DVec3::new(0.0, 2.5, 4.0),         // Position: above and behind
-        DVec3::new(-0.3, 0.0, 0.0),        // Look at: slightly left to frame both objects
-        DVec3::new(0.0, 1.0, 0.0),         // Up vector
-        4.1,                               // Focus distance (set to cuboid distance)
-        0.1,                               // Small aperture for good depth of field
+        image_width,
+        aspect_ratio,
+        samples_per_pixel,
+        max_depth,
+        look_from,
+        look_at,
+        up_vector,
+        focus_dist,
+        aperture,
     );
 
+    // Render the scene
     camera.render(&world)
 }

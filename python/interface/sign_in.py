@@ -177,6 +177,8 @@ class SignUp(ctk.CTkFrame):
             self.newPassEntry.configure(border_color="red", border_width=1)
             self.confPassEntry.configure(border_color="red", border_width=1)
 
+            return
+
         specChCount = lambda text: len([ch for ch in text if not ch.isalnum() and not ch.isspace()])
 
         userValidation = [len(username) in range(2, 51), not specChCount(username), not(user_manager.get_user(username))]
@@ -357,9 +359,16 @@ class Login(ctk.CTkFrame):
 
             self.userEntry.configure(border_color="red", border_width=1)
             self.passEntry.configure(border_color="red", border_width=1)
+
+            return
             
         user_manager = UserManager()
         user = user_manager.get_user(username)
+        """
+        File "/home/andrewsjag/Documents/School Stuff/Projects/CS Project/three_dev/python/data_management/data_manager.py", line 182, in get_user_section
+            cursor = conn.execute(section_queries[section], (username,))
+        sqlite3.OperationalError: no such column: updated_at
+        """
 
         if user:
             if user['password_hash'] == password: # TODO: Insecure - Replace with proper password hashing and verification

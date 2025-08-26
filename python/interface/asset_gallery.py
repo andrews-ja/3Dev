@@ -73,17 +73,22 @@ class AssetGallery(ctk.CTkFrame):
         self.category_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.categories = ["Textures", "Backgrounds"]
         self.category_buttons: List[ctk.CTkButton] = []
-        
+
+        def category_button_command(index):
+            for i, btn in enumerate(self.category_buttons):
+                btn.configure(fg_color=BUTTON_COLOUR if i == index else "transparent")
+
         for i, category in enumerate(self.categories):
             btn = ctk.CTkButton(
                 self.category_frame,
                 text=category,
                 fg_color=BUTTON_COLOUR if i == 0 else "transparent",
-                height=30
+                height=30,
+                command=lambda index=i: category_button_command(index)
             )
             btn.grid(row=0, column=i, padx=(0 if i == 0 else 10, 10), pady=10)
             self.category_buttons.append(btn)
-
+            
         # Import section
         self.import_frame = ctk.CTkFrame(self, fg_color=LIGHTER_BLUE)
         self.import_frame.grid_columnconfigure(0, weight=1)

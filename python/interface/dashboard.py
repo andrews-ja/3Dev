@@ -15,7 +15,7 @@ class TopMenuFrame(ctk.CTkFrame):
         username: str,
         **kwargs
     ) -> None:
-        super().__init__(master, **kwargs)
+        super().__init__(master, fg_color=DARK_BLUE, **kwargs)
 
         # Configure grid weights
         self.grid_columnconfigure(3, weight=1)  # Make the middle space expand
@@ -90,7 +90,7 @@ class TopMenuFrame(ctk.CTkFrame):
         """
         * Show the selected menu frame and update button colors.
         
-        Args:
+        Paramaters:
             menu_name: The name of the menu to display
         """
         # Update button colors

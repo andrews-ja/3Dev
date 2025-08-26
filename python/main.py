@@ -72,10 +72,9 @@ class Application(ctk.CTk):
         self.grid_rowconfigure(1, weight=1)
 
         # Dashboard frames
-        self.top_menu = TopMenuFrame(self, username, fg_color=DARK_BLUE)
+        self.top_menu = TopMenuFrame(self, username)
 
         self.top_menu.grid(row=0, column=0, sticky="nesw")
-        self.main_content.grid(row=1, column=0, sticky="nsew")
 
 def main() -> None:
     """
